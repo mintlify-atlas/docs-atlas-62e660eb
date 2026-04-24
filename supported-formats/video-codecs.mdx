@@ -1,0 +1,52 @@
+---
+title: "Supported Video Codecs: VP9, AV1, H.266, Sorenson, and More"
+description: "QuickLook Video adds VP9, AV1, H.266/VVC, Theora, Sorenson, Cinepak, Indeo, HAP, and FLIC — video codecs that AVFoundation cannot decode without an extension."
+---
+
+QuickLook Video uses two complementary mechanisms to handle non-native video codecs. The **FormatReader** extension demuxes supported container formats and, for most modern codecs such as VP8, VP9, AV1, and Theora, passes frames directly to AVFoundation using FFmpeg's `libavcodec` under the hood. For a second set of codecs—primarily legacy formats that AVFoundation may partially recognise but cannot decode correctly on its own—the **VideoDecoder** extension registers as a `MEVideoDecoder` and handles decoding frame-by-frame, also via FFmpeg. Together, these two extensions give AVFoundation broad codec coverage beyond what macOS provides natively.
+
+## Codecs handled by FormatReader (via FFmpeg)
+
+These codecs are decoded as part of the container demuxing pipeline. You do not need to do anything special to enable them—they work automatically for any file in a [supported container format](/supported-formats/file-formats).
+
+| Codec | Common use |
+|-------|------------|
+| VP6 | Flash Video (FLV) |
+| VP8 | WebM, Matroska |
+| VP9 | WebM, Matroska |
+| AV1 | WebM, Matroska |
+| VVC / H.266 | Next-generation video compression |
+| Theora | Ogg Video (OGV, OGM) |
+| Dolby Vision | HDR video in Matroska and other containers |
+| Real Video | Real Media (RM, RV) |
+| Flash Video (Sorenson Spark) | Legacy Flash Video (FLV) |
+
+## Codecs handled by VideoDecoder (AVFoundation extension)
+
+The VideoDecoder extension registers directly with AVFoundation using the `MEVideoDecoder` API. This handles codecs that AVFoundation may surface to a registered decoder but cannot decode itself. These codecs can appear in both non-native containers (opened by FormatReader) and in some legacy `.avi` or `.mov` files.
+
+| Codec | FourCC / identifier | Description |
+|-------|---------------------|-------------|
+| QuickTime Animation | `QTRLE` | Lossless RLE codec used in older QuickTime files |
+| Apple Video | `rpza` | QuickTime Video, 16-bit RGB compression |
+| Cinepak | `CVID` | Early CD-ROM video codec from the 1990s |
+| HAP | `Hap1`, `Hap5`, `HapY`, `HapM`, `HapA` | GPU-accelerated codec for live video and VJing |
+| FLIC | `flic`, `AFLC` | Autodesk animation format used in old games and demos |
+| Intel Indeo 2 | `RT21` | Early Intel video codec |
+| Intel Indeo 3 | `IV31`, `IV32` | Second-generation Intel Indeo |
+| Intel Indeo 4 | `IV41` | Third-generation Intel Indeo |
+| Intel Indeo 5 | `IV50` | Fourth-generation Intel Indeo |
+| Sorenson Video 1 | `SVQ1` | Original Sorenson codec, common in early QuickTime files |
+| Sorenson Video 3 | `SVQ3` | Improved Sorenson codec, used in QuickTime and some AVI files |
+| MPEG-4 (DivX / Xvid variants) | `DIVX`, `XVID`, `DX50`, `MPG4`, `FMP4` | MPEG-4 Part 2 encoded with DivX, Xvid, or compatible encoders |
+| Microsoft MPEG-4 v1 | `MP41` | Microsoft's non-standard MPEG-4 variant |
+| Microsoft MPEG-4 v2 | `MP42` | Second-generation Microsoft MPEG-4 |
+| Microsoft MPEG-4 v3 | `MP43` | Third-generation Microsoft MPEG-4, base for early DivX |
+
+<Note>
+  The MPEG-4 variants listed here (`DIVX`, `XVID`, `DX50`, and similar FourCCs) are distinct from the standard `mp4v` codec that macOS already decodes natively. QuickLook Video only handles the non-standard variants that AVFoundation cannot process on its own.
+</Note>
+
+## HDR and tone mapping
+
+For HDR formats—including Dolby Vision and other high bit-depth content—QuickLook Video converts frames to a displayable SDR representation. It uses Metal for tone mapping where supported by the GPU, falling back to FFmpeg's `zscale` filter for formats that Metal does not handle.

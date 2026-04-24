@@ -1,0 +1,50 @@
+---
+title: "Adjust the Thumbnail Snapshot Time in QuickLook Video"
+description: "Change the snapshot time to pick a better thumbnail frame. Defaults to 10 seconds and adjustable via the slider in the QuickLook Video preferences window."
+---
+
+The snapshot time setting controls which frame QuickLook Video grabs when generating a thumbnail or a single-frame preview for a video file. By default the app seeks to **10 seconds** into the video — the same offset macOS CoreMedia uses for its own thumbnails — so that QuickLook Video thumbnails blend in with native macOS thumbnails in Finder. If 10 seconds does not produce a useful frame for your library, you can drag the slider to any other offset.
+
+## Technical background
+
+The snapshot time is stored as a whole number of seconds in `UserDefaults` under the key `SnapshotTime`, in the app's shared suite (identified by the `ApplicationGroup` key in the app's `Info.plist`). The slider always rounds to an integer — you cannot set a fractional second. The formatted value shown next to the slider is produced by `DateComponentsFormatter` with the `.abbreviated` style, so values display as "10 sec", "1 min", "1 min 30 sec", and so on.
+
+The setting applies to both Finder thumbnail icons and single-frame QuickLook previews when a playable preview is not available or `SnapshotAlways` is enabled.
+
+<Note>
+Cached thumbnails are **not** updated when you move the slider. The new offset applies only to thumbnails generated after the change. Click **Regenerate Thumbnails** to rebuild the cache with the new value.
+</Note>
+
+## Why you might change the default
+
+The 10-second default works well for many videos but can land on a black frame or title card when:
+
+- A video opens with an intro sequence, credits, or production logo that lasts longer than 10 seconds
+- Short clips (under 10 seconds) would benefit from a frame closer to the beginning
+- You want Finder thumbnails to show a specific scene — for example, the first action shot at 30 seconds or the main subject at 60 seconds
+
+<Tip>
+If many of your videos share a common intro length — for example, a 30-second cold open — setting the snapshot time to just after that point gives you consistently informative thumbnails across your library.
+</Tip>
+
+## Steps to change the snapshot time
+
+<Steps>
+  <Step title="Open QuickLook Video">
+    Open **QuickLook Video.app** from your Applications folder. The main window is the settings panel.
+  </Step>
+  <Step title="Drag the Snapshot Time slider">
+    Move the **Snapshot Time** slider to the offset you want. The label next to the slider updates in real time to show the selected value in an abbreviated format (for example, "30 sec" or "1 min").
+  </Step>
+  <Step title="Click Regenerate Thumbnails">
+    Click the **Regenerate Thumbnails** button to clear the existing QuickLook cache and restart Finder. This ensures the new offset is used when thumbnails are rebuilt.
+  </Step>
+  <Step title="Wait for Finder to rebuild thumbnails">
+    Finder generates thumbnails on demand as you browse folders. Navigate to a folder containing video files to trigger thumbnail generation with the new snapshot time.
+  </Step>
+</Steps>
+
+## Related pages
+
+- [QuickLook Video Settings and Preferences](/configuration/settings) — overview of all settings in the app
+- [Manage the QuickLook Thumbnail Cache](/configuration/cache-management) — troubleshoot stale or missing thumbnails

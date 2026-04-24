@@ -1,0 +1,134 @@
+---
+title: "VideoDecoder: FFmpeg-Powered Codec Extension for macOS"
+description: "VideoDecoder implements MEVideoDecoder and uses FFmpeg to decode legacy video codecs, converting frames to BGRA via vImage, Metal HDR tone mapping, or zscale."
+---
+
+The VideoDecoder extension teaches AVFoundation how to decode video codecs that macOS does not support natively. It implements Apple's `MEVideoDecoder` protocol from the `MediaExtension` framework, receiving compressed video frames as `CMSampleBuffer` objects and returning decoded `CVPixelBuffer` frames ready for display. Internally it uses FFmpeg's libavcodec for decoding and converts the result to BGRA format through one of three hardware-aware conversion pipelines.
+
+## Extension entry point
+
+The extension is registered through `VideoDecoderFactory`, which implements `MEVideoDecoderExtension`. When AVFoundation encounters a video track whose codec type matches one the extension supports, it calls `makeVideoDecoder(codecType:videoFormatDescription:videoDecoderSpecifications:pixelBufferManager:)` to obtain a decoder instance.
+
+```swift
+class VideoDecoderFactory: NSObject, MEVideoDecoderExtension {
+    func makeVideoDecoder(
+        codecType: CMVideoCodecType,
+        videoFormatDescription: CMVideoFormatDescription,
+        videoDecoderSpecifications: [String: Any],
+        pixelBufferManager: MEVideoDecoderPixelBufferManager
+    ) throws -> any MEVideoDecoder
+}
+```
+
+## Supported codecs
+
+The `VideoDecoder.supported` dictionary maps `CMVideoCodecType` FourCC values to FFmpeg `AVCodecID` values. The extension handles the following codecs:
+
+<AccordionGroup>
+  <Accordion title="Full codec list">
+
+    | FourCC / constant | Codec |
+    |---|---|
+    | `kCMVideoCodecType_Animation` | QuickTime Animation (RLE) |
+    | `rpza` | Apple Video (RPZA) |
+    | `kCMVideoCodecType_Cinepak` | Cinepak |
+    | `Hap1`, `Hap5`, `HapY`, `HapM`, `HapA` | HAP variants |
+    | `flic`, `AFLC` | FLIC animation |
+    | `RT21` | Intel Indeo 2 |
+    | `IV31`, `IV32` | Intel Indeo 3 |
+    | `IV41` | Intel Indeo 4 |
+    | `IV50` | Intel Indeo 5 |
+    | `kCMVideoCodecType_SorensonVideo` | Sorenson Video 1 (SVQ1) |
+    | `kCMVideoCodecType_SorensonVideo3` | Sorenson Video 3 (SVQ3) |
+    | `DIVX`, `XVID`, `DX50`, `MPG4`, `FMP4` | MPEG-4 / DivX / Xvid variants |
+    | `MP41` | MS MPEG-4 v1 |
+    | `MP42` | MS MPEG-4 v2 |
+    | `MP43` | MS MPEG-4 v3 |
+
+  </Accordion>
+</AccordionGroup>
+
+## Codec parameter handoff from FormatReader
+
+When a file is opened by the FormatReader extension, it serialises FFmpeg's `AVCodecParameters` structure into a `CMVideoFormatDescription` extension under the key `"QLVideo"`. This bundle includes:
+
+- The raw `AVCodecParameters` struct bytes
+- Codec `extradata` (e.g., the decoder configuration record)
+- Any `coded_side_data` entries, such as mastering display metadata for HDR streams
+
+When the VideoDecoder receives the `CMVideoFormatDescription`, it reads these values back and reconstructs a full `AVCodecContext` ready for decoding — preserving all the codec-specific configuration that FormatReader found in the container.
+
+<Note>
+  When decoding a file that was not opened by the FormatReader (for example, an `.avi` or `.mov` file that macOS parsed natively), the VideoDecoder falls back to reasonable defaults for each supported codec type, extracting what it can from the `CMVideoFormatDescription` extensions.
+</Note>
+
+## Decoding a frame
+
+`decodeFrame(from:options:completionHandler:)` is called by AVFoundation once per video frame. The method:
+
+<Steps>
+  <Step title="Extracts compressed data from the CMSampleBuffer">
+    The compressed frame data is accessed via `CMBlockBufferGetDataPointer()`. Sample attachments on the buffer — key frame flag, discard flag, and decoder discontinuity flag — are mapped to FFmpeg `AVPacket` flags.
+  </Step>
+  <Step title="Sends the packet to FFmpeg">
+    The data is wrapped in an `AVPacket` (without copying — the `CMBlockBuffer` retains ownership) and sent to the decoder via `avcodec_send_packet()`. If the sample buffer carries a discontinuity attachment (indicating a seek), the decoder is flushed first with `avcodec_send_packet(nil)` and `avcodec_flush_buffers()`.
+  </Step>
+  <Step title="Receives the decoded frame">
+    `avcodec_receive_frame()` retrieves the decoded `AVFrame`.
+  </Step>
+  <Step title="Converts the frame to BGRA">
+    The decoded frame is converted to a BGRA `CVPixelBuffer` using one of three pipelines, described below.
+  </Step>
+</Steps>
+
+## Pixel format conversion pipelines
+
+After decoding, the raw `AVFrame` must be converted to `kCVPixelFormatType_32BGRA` for display. The decoder tries three conversion methods in order of preference:
+
+### 1. vImage (macOS Accelerate framework)
+
+The fastest path. Used for standard 8-bit YUV formats:
+
+| FFmpeg format | Description |
+|---|---|
+| `AV_PIX_FMT_YUV420P`, `AV_PIX_FMT_YUVJ420P` | 8-bit 4:2:0 planar |
+| `AV_PIX_FMT_NV12` | 8-bit 4:2:0 bi-planar |
+| `AV_PIX_FMT_YUYV422`, `AV_PIX_FMT_YUVJ422P` | 8-bit 4:2:2 packed |
+
+For anamorphic content (non-square pixels), the vImage path scales the luma and chroma planes to the correct display width before conversion.
+
+### 2. Metal tone mapper
+
+Used for HDR frames that require tone mapping. `MetalToneMapper.supported(for:)` returns `true` when the decoded frame's transfer characteristic is PQ (`AVCOL_TRC_SMPTE2084`) or HLG (`AVCOL_TRC_ARIB_STD_B67`), or when the frame carries any of the following HDR side data types:
+
+- `AV_FRAME_DATA_MASTERING_DISPLAY_METADATA`
+- `AV_FRAME_DATA_CONTENT_LIGHT_LEVEL`
+- `AV_FRAME_DATA_DOVI_METADATA`
+- `AV_FRAME_DATA_DYNAMIC_HDR_PLUS`
+- `AV_FRAME_DATA_DYNAMIC_HDR_VIVID`
+
+The `MetalToneMapper` supports planar YUV formats at 9, 10, 12, and 16 bits per channel in 4:2:0, 4:2:2, and 4:4:4 subsampling. It uploads each plane as a Metal `r16Uint` texture, runs the `hdrTonemapYUVPlanarToBGRA8` compute kernel from `hdr_tonemap.metal`, and writes the result directly into the BGRA `CVPixelBuffer` via a `CVMetalTextureCache`.
+
+The tone mapping peak luminance is derived from per-frame or stream-level HDR metadata (MaxCLL, MaxFALL, mastering display luminance), with fallback defaults of 1,000 nits peak and 400 nits MaxFALL.
+
+<Warning>
+  The output pixel buffer is tagged as sRGB BT.709 (`kCVImageBufferColorPrimaries_ITU_R_709_2`, `kCVImageBufferTransferFunction_sRGB`), regardless of the source HDR colour space. This prevents the macOS display system from misinterpreting the HDR metadata tags that remain in the stream and applying a second round of tone mapping.
+</Warning>
+
+### 3. zscale filter (FFmpeg)
+
+The fallback path for any format not handled by vImage or Metal. FFmpeg's `zscale` filter (provided by the zimg library) converts almost any source pixel format to `AV_PIX_FMT_GBRPF32LE` (float planar GBR) for HDR content or `AV_PIX_FMT_GBRP` (8-bit planar GBR) for SDR content. A final `vImageCopyToBGRA` call packs the planar result into the BGRA pixel buffer.
+
+## Debugging the VideoDecoder
+
+To debug in Xcode, edit the **Run** scheme for the `videodecoder` target:
+
+- **Executable**: `simpleplayer.app`
+- **Debug executable**: enabled
+
+Stream log output from the decoder:
+
+```bash
+sudo log stream --style compact --debug \
+  --predicate 'subsystem == "uk.org.marginal.qlvideo" AND category == "videodecoder"'
+```

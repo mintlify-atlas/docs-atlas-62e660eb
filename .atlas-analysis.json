@@ -1,0 +1,77 @@
+{
+  "projectType": "general",
+  "projectName": "QuickLook Video",
+  "projectDescription": "A macOS app that extends Finder, QuickLook, and Spotlight to display thumbnails, previews, and metadata for a wide range of non-native video and audio file formats.",
+  "theme": "almond",
+  "primaryColor": "#aa2b30",
+  "lightColor": "#d28c94",
+  "darkColor": "#e6cacb",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "getting-started"
+        ]
+      },
+      {
+        "group": "Supported Formats",
+        "pages": [
+          "supported-formats/file-formats",
+          "supported-formats/video-codecs",
+          "supported-formats/audio-codecs"
+        ]
+      },
+      {
+        "group": "How It Works",
+        "pages": [
+          "how-it-works/overview",
+          "how-it-works/spotlight-extension",
+          "how-it-works/format-reader",
+          "how-it-works/video-decoder"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/settings",
+          "configuration/thumbnail-time",
+          "configuration/cache-management"
+        ]
+      },
+      {
+        "group": "Troubleshooting & Contributing",
+        "pages": [
+          "troubleshooting",
+          "building",
+          "debugging",
+          "faq"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Finder thumbnails and cover art for MKV, WebM, AVI, FLV, WMV, and many other non-native video containers",
+    "QuickLook preview support for non-native video file types",
+    "Spotlight metadata indexing (title, artist, duration, resolution, codec, etc.) for non-native media files",
+    "Support for non-native video codecs: VP6, VP8, VP9, AV1, VVC/H.266, Theora, Sorenson, Cinepak, Indeo, and more",
+    "Support for non-native audio codecs: Vorbis, WMA, WavPak, ATRAC, and others",
+    "AVFoundation Media Extensions for native OS-level integration",
+    "HDR tone mapping via Metal GPU pipeline",
+    "Configurable thumbnail snapshot time offset",
+    "Automatic cache reset and Spotlight reindexing on app update"
+  ],
+  "publicApiSurface": [
+    "GetMetadataForFile (Spotlight mdimporter entry point)",
+    "FormatReader (MEFormatReader — loads file info, metadata, and track readers via AVFoundation MediaExtension)",
+    "FormatReaderFactory (MEFormatReaderInstantiator — registers supported file types)",
+    "VideoDecoder (MEVideoDecoder — decodes non-native video codecs via FFmpeg)",
+    "VideoDecoderFactory (MEVideoDecoderInstantiator — registers supported codec types)",
+    "AudioTrackReader (METrackReader for audio streams)",
+    "VideoTrackReader (METrackReader for video streams)",
+    "resetCache() — clears the QuickLook thumbnail cache",
+    "resetSpotlight() — triggers Spotlight reindexing for the mdimporter"
+  ]
+}

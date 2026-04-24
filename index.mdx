@@ -1,97 +1,61 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "QuickLook Video: Thumbnails & Previews for Any Video Format"
+description: "QuickLook Video gives macOS Finder, QuickLook, and Spotlight support for MKV, WebM, AVI, FLV, WMV, and other video formats that macOS cannot open natively."
 ---
 
-## Setting up
+QuickLook Video is a free, open-source macOS app that fills the gap between what macOS natively understands and the wide world of video formats. Install it once, and Finder automatically shows thumbnails and cover art, QuickLook shows full previews, and Spotlight indexes metadata — all for file types that macOS would otherwise display as blank icons.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Download and install QuickLook Video on your Mac in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Getting Started" icon="rocket" href="/getting-started">
+    Verify the app is working and start browsing your video library.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Supported Formats" icon="film" href="/supported-formats/file-formats">
+    See the full list of supported containers, video codecs, and audio codecs.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Fix common issues with thumbnails, previews, or Spotlight search.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What QuickLook Video adds to macOS
 
-Everything you need to create world-class documentation.
+macOS natively supports a limited set of media formats — primarily MPEG audio and video inside MPEG containers. QuickLook Video extends this with:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Finder thumbnails" icon="image">
+    Static snapshot thumbnails and embedded cover art for non-native video and audio files, displayed directly in Finder.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="QuickLook previews" icon="eye">
+    Press Space on any supported file in Finder to see a full preview via the QuickLook extension.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Spotlight metadata" icon="magnifying-glass">
+    Search your video library by title, artist, codec, resolution, duration, and more using Spotlight.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Wide codec support" icon="microchip">
+    Hardware and software decoding for VP8, VP9, AV1, H.266/VVC, Theora, Sorenson, Cinepak, Indeo, and many more.
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Get started
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Download the app">
+    Get the latest release from the [GitHub releases page](https://github.com/Marginal/QuickLookVideo/releases). Open the `.dmg` and drag **QuickLook Video.app** to your Applications folder.
+  </Step>
+  <Step title="Launch the app">
+    Open **QuickLook Video** from your Applications folder. The app registers all the necessary system extensions on first launch.
+  </Step>
+  <Step title="Browse your video library">
+    Open a Finder window containing MKV, WebM, AVI, or other non-native video files. Thumbnails should appear automatically. Press **Space** on any file to see a QuickLook preview.
+  </Step>
+  <Step title="Search with Spotlight">
+    Use Spotlight (⌘Space) to search video files by title, codec, resolution, or other metadata. Indexing runs in the background and may take a few minutes on first run.
+  </Step>
+</Steps>
+
+<Note>
+QuickLook Video requires macOS 12 (Monterey) or later and a Mac with AVX2 support (late-2013 or newer).
+</Note>

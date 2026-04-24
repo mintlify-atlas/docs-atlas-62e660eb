@@ -1,0 +1,39 @@
+---
+title: "Supported Audio Codecs: Vorbis, WMA, FLAC, and More"
+description: "QuickLook Video enables Vorbis, Windows Media Audio, WavPak, ATRAC, FLAC, and other non-native audio codecs inside supported container formats on macOS."
+---
+
+QuickLook Video's FormatReader extension handles audio demuxing alongside video. When you open a file in a [supported container format](/supported-formats/file-formats), the FormatReader reads all audio streams and exposes them to AVFoundation. For codecs that AVFoundation can decode natively—such as AAC and MP3—this works transparently. For non-native audio codecs such as Vorbis or Windows Media Audio, FFmpeg's `libavcodec` handles decoding within the extension pipeline. In both cases, Spotlight metadata (sample rate, channel count, audio language) is extracted by the separate Spotlight importer extension, which also uses FFmpeg to read stream information directly.
+
+## Supported audio codecs
+
+| Codec | Common containers | Notes |
+|-------|-------------------|-------|
+| Vorbis | Ogg (`.ogv`, `.ogm`), WebM, Matroska | Xiph.Org's open lossy audio codec |
+| Windows Media Audio (WMA) | Windows Media (`.wma`, `.wmv`) | Microsoft's proprietary audio codec |
+| WavPak | Matroska, AVI | Lossless audio compression format |
+| ATRAC | Various | Sony's proprietary codec used in MiniDisc and professional audio |
+| AAC | Matroska, WebM, and others | Decoded natively by macOS; metadata extracted for non-native containers |
+| AC3 / Dolby Digital | Matroska, MXF, and others | Common in broadcast and disc media |
+| EAC3 / Dolby Digital Plus | Matroska and others | Enhanced AC3 used in streaming and disc media |
+| DTS | Matroska, MXF, and others | Multichannel audio used in film and disc media |
+| FLAC | Matroska, Ogg | Xiph.Org's lossless open audio codec |
+| MP2 / MPEG Layer 2 | Matroska, MPEG, broadcast formats | Predecessor to MP3, still used in broadcasting |
+| MP3 / MPEG Layer 3 | Matroska, AVI, and others | Decoded natively by macOS; metadata extracted for non-native containers |
+
+<Note>
+  Audio codec support depends on the container. If a codec appears in a container that QuickLook Video does not support, it will not be available. See [Supported Video Container Formats](/supported-formats/file-formats) for the full list of supported containers.
+</Note>
+
+## Metadata extraction
+
+The Spotlight importer extension reads audio stream metadata from all supported containers regardless of the specific audio codec in use. For each file, it extracts and indexes:
+
+- **Duration** — total playback time in seconds
+- **Sample rate** — in Hz
+- **Channel count** — reported as 5.1, 6.1, or 7.1 for surround configurations
+- **Audio language** — from stream metadata tags, as an ISO 639 language code
+- **Bit rate** — audio stream bit rate in bits per second
+- **Codec name** — displayed in Finder's Get Info panel
+
+These attributes become searchable in Spotlight and visible in Finder's Get Info window once the file has been indexed.

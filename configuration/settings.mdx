@@ -1,0 +1,36 @@
+---
+title: "QuickLook Video App Settings and Preferences Panel"
+description: "Configure QuickLook Video's thumbnail snapshot time, preview behavior, and extension settings using the built-in preferences panel in the QuickLook Video app."
+---
+
+QuickLook Video includes a lightweight preferences panel built directly into the main app window. Opening the app from your Applications folder takes you straight to settings — there is no separate Preferences menu item to find. From here you can control when thumbnails are grabbed, force the QuickLook cache to regenerate, and see version and license information.
+
+## Accessing settings
+
+Open **QuickLook Video.app** from your Applications folder. The window that appears is the settings panel. QuickLook Video closes automatically when you close this window.
+
+## Available settings
+
+<CardGroup cols={2}>
+  <Card title="Snapshot Time" icon="clock">
+    A slider that controls how many seconds into a video the thumbnail frame is grabbed. The default is **10 seconds**, matching the offset macOS CoreMedia uses for its own thumbnails. The current value is displayed next to the slider using an abbreviated time format (for example, "10 sec" or "1 min 30 sec").
+  </Card>
+  <Card title="Regenerate Thumbnails" icon="rotate">
+    A button that clears the QuickLook thumbnail cache (`qlmanage -r cache`) and restarts Finder so that new thumbnails are generated for all your video files. Use this after changing the Snapshot Time or after updating the app.
+  </Card>
+</CardGroup>
+
+The preferences window also displays the installed version number and copyright notice, and includes a link to the help wiki for troubleshooting and additional documentation.
+
+## After changing a setting
+
+<Note>
+Changing the Snapshot Time updates the preference immediately, but existing cached thumbnails are **not** regenerated automatically. Click **Regenerate Thumbnails** after adjusting the slider to apply the new offset to all your video files.
+</Note>
+
+When you click **Regenerate Thumbnails**, the app clears the QuickLook cache and restarts Finder. Finder rebuilds thumbnails on demand as you browse folders, so it may take a moment for new thumbnails to appear in all locations.
+
+## Related pages
+
+- [Configure Thumbnail Snapshot Time](/configuration/thumbnail-time) — detailed guide to choosing the right snapshot offset
+- [Manage the QuickLook Thumbnail Cache](/configuration/cache-management) — troubleshoot stale or missing thumbnails

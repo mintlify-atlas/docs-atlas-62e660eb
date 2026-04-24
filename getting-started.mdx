@@ -1,0 +1,86 @@
+---
+title: "Get Started with QuickLook Video: Thumbnails & Search"
+description: "Verify QuickLook Video works, browse video thumbnails in Finder, use QuickLook previews, search Spotlight metadata, and adjust the snapshot time."
+---
+
+Once QuickLook Video is installed, you interact with it almost entirely through Finder, QuickLook, and Spotlight rather than through the app itself. This guide walks you through verifying that everything is working, browsing your video library, searching with Spotlight metadata, and adjusting the thumbnail snapshot time setting.
+
+## Verify the app is running
+
+<Steps>
+  <Step title="Open QuickLook Video">
+    Open **QuickLook Video** from your Applications folder. The app window shows the current version, a snapshot time slider, and status notices. If you see a message about reindexing, Spotlight is still processing your media library — this is normal after a fresh install or update.
+  </Step>
+  <Step title="Check for a reindexing notice">
+    If the app window shows "Reindexing Spotlight metadata…", the Spotlight importer is registered and working. This notice disappears once indexing completes. If no notice appears and this is your first launch, wait 30 seconds and reopen the app.
+  </Step>
+</Steps>
+
+## Browse thumbnails in Finder
+
+<Steps>
+  <Step title="Open a folder with video files">
+    In Finder, navigate to a folder containing MKV, WebM, AVI, FLV, WMV, or other supported video files. Switch to icon view with **⌘1** to see thumbnails.
+  </Step>
+  <Step title="Confirm thumbnails are rendering">
+    Supported video files should display a static thumbnail taken from a point in the video — by default, 10 seconds in. Audio files display embedded cover art if the file contains it.
+  </Step>
+  <Step title="Preview a file with QuickLook">
+    Click any supported video file to select it, then press **Space**. A QuickLook preview opens with standard playback controls. Press **Space** again to close it.
+  </Step>
+</Steps>
+
+<Tip>
+If you have many video files, thumbnails are generated on demand as files come into view in the Finder window. Scroll through the folder to trigger generation for all files.
+</Tip>
+
+## Search with Spotlight
+
+QuickLook Video's Spotlight importer indexes metadata beyond the filename — including codec, resolution, and duration — so you can find files using information that Finder cannot search on its own.
+
+<Steps>
+  <Step title="Open Spotlight">
+    Press **⌘Space** to open Spotlight search.
+  </Step>
+  <Step title="Search by metadata">
+    Type a search term such as a video title, artist name, or codec identifier. Spotlight returns results from your indexed video and audio library alongside other file types.
+  </Step>
+  <Step title="Refine with attributes">
+    For more precise searches, open a Finder window and use **File → Find** (**⌘F**) to search with specific metadata attributes such as duration or resolution. These attributes are populated by QuickLook Video's Spotlight importer.
+  </Step>
+</Steps>
+
+<Note>
+Spotlight indexing runs in the background. Files added to your Mac after installation are indexed automatically, but new files may not appear in search results immediately. Allow a few minutes for Spotlight to process newly added video files.
+</Note>
+
+## Configure thumbnail settings
+
+The QuickLook Video app window exposes one configurable setting: the snapshot time offset used when generating thumbnails.
+
+<Steps>
+  <Step title="Open QuickLook Video">
+    Open **QuickLook Video** from your Applications folder.
+  </Step>
+  <Step title="Adjust the snapshot time">
+    Use the **Snapshot time** slider to set the offset from the beginning of the video at which thumbnails are captured. The default is **10 seconds**. If your videos have long intros or black opening frames, increase this value to capture a more representative frame.
+  </Step>
+  <Step title="Regenerate thumbnails">
+    After changing the snapshot time, click **Regenerate thumbnails**. The app clears the QuickLook cache and restarts Finder so that all thumbnails are regenerated with the new offset.
+  </Step>
+</Steps>
+
+<Tip>
+The regenerate button runs `qlmanage -r cache` internally to clear the QuickLook thumbnail cache. If you ever need to do this manually from Terminal, that is the command to use.
+</Tip>
+
+## Thumbnails are not appearing
+
+If thumbnails do not appear after a few minutes, try the following:
+
+1. **Make sure the app has been launched at least once.** The extensions are registered on first launch. Thumbnails will not appear until you open QuickLook Video.
+2. **Switch to icon view in Finder.** Thumbnails are only visible in icon view (**⌘1**) or Cover Flow view. List and column views show generic file icons.
+3. **Regenerate the cache.** Open QuickLook Video and click **Regenerate thumbnails**. This forces macOS to rebuild stale or empty cache entries.
+4. **Allow more time.** On a large media library, generation takes time. Thumbnails are produced as files scroll into view, not all at once in the background.
+
+For issues that persist after these steps, see the [troubleshooting guide](/troubleshooting).

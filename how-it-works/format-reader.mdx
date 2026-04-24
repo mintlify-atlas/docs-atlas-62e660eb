@@ -1,0 +1,127 @@
+---
+title: "FormatReader: Open Non-Native Containers in AVFoundation"
+description: "FormatReader implements MEFormatReader, using FFmpeg to demux Matroska, WebM, and other non-native containers and expose audio and video tracks to AVFoundation."
+---
+
+The FormatReader extension bridges non-native container formats into AVFoundation using Apple's Media Extension framework. When you open a Matroska, WebM, Windows Media, Flash Video, or other unsupported file, AVFoundation delegates format parsing to this extension. The extension uses FFmpeg's libavformat to open and demux the file, then presents the result as standard `METrackReader` objects that AVFoundation — and by extension QuickLook — can read like any native media asset.
+
+## Extension entry point
+
+The extension is registered through `FormatReaderFactory`, which implements `MEFormatReaderExtension`. When AVFoundation needs to open a file, it calls `formatReader(with:options:)` on the factory, which returns a new `FormatReader` instance for the given byte source.
+
+```swift
+class FormatReaderFactory: NSObject, MEFormatReaderExtension {
+    func formatReader(with primaryByteSource: MEByteSource,
+                      options: MEFormatReaderInstantiationOptions?) throws -> any MEFormatReader
+}
+```
+
+`FormatReaderFactory` also initialises FFmpeg's logging system on startup, routing libavformat and libavcodec log output to the macOS system log.
+
+## Reading file data with AVIOContext
+
+AVFoundation does not pass a filesystem path to the extension — it provides an `MEByteSource` for reading the file's bytes. The `FormatReader` wraps this byte source in an FFmpeg `AVIOContext` so that libavformat can read the file through the same callbacks it uses for any other I/O source.
+
+The `AVIOContext` buffer is 16 KB, aligned to an ARM memory page boundary, and freed automatically when the context is closed.
+
+## Opening the container
+
+`loadFileInfo()` performs the two standard FFmpeg discovery calls:
+
+1. `avformat_open_input()` — identifies the container format and reads its header.
+2. `avformat_find_stream_info()` — reads ahead in the file to fill in codec parameters for all streams. The extension sets a generous read-ahead budget to handle unusual files:
+   - `max_analyze_duration` = 5 seconds
+   - `probesize` = 10 MB
+
+The `AVFMT_FLAG_GENPTS` flag is also set, because some formats (such as AVI) do not include presentation timestamps in the container and AVFoundation requires them.
+
+On success, `loadFileInfo()` reports the file duration as a `CMTime` and marks the file as non-fragmenting (`fragmentsStatus = .couldNotContainFragments`).
+
+## Extracting metadata
+
+`loadMetadata()` maps FFmpeg container tags to `AVMetadataIdentifier` values and returns an array of `AVMetadataItem` objects.
+
+<AccordionGroup>
+  <Accordion title="Metadata tag-to-identifier mapping">
+
+    | Container tag | AVMetadataIdentifier |
+    |---|---|
+    | `album` | `.commonIdentifierAlbumName` |
+    | `artist` | `.commonIdentifierArtist` |
+    | `author` | `.commonIdentifierAuthor` |
+    | `comment` | `.quickTimeMetadataComment` |
+    | `composer` | `.quickTimeMetadataComposer` |
+    | `copyright` | `.commonIdentifierCopyrights` |
+    | `creation_time`, `date` | `.commonIdentifierCreationDate` |
+    | `description` | `.commonIdentifierDescription` |
+    | `encoded_by` | `.quickTimeMetadataEncodedBy` |
+    | `encoder` | `.quickTimeMetadataSoftware` |
+    | `genre` | `.quickTimeMetadataGenre` |
+    | `grouping` | `.iTunesMetadataGrouping` |
+    | `keywords` | `.quickTimeMetadataKeywords` |
+    | `language` | `.commonIdentifierLanguage` |
+    | `location` | `.commonIdentifierLocation` |
+    | `performer` | `.quickTimeMetadataPerformer` |
+    | `publisher` | `.commonIdentifierPublisher` |
+    | `service_name`, `service_provider` | `.commonIdentifierSource` |
+    | `synopsis` | `.quickTimeMetadataInformation` |
+    | `title` | `.commonIdentifierTitle` |
+    | `track` | `.quickTimeUserDataTrack` |
+
+  </Accordion>
+</AccordionGroup>
+
+### Cover art
+
+`loadMetadata()` also searches all streams for embedded cover art. It accepts streams whose codec is PNG (`AV_CODEC_ID_PNG`) or JPEG (`AV_CODEC_ID_MJPEG`) and whose disposition is `AV_DISPOSITION_ATTACHED_PIC`, as well as attachment-type streams that carry image data in their `extradata`.
+
+When multiple cover art streams are present (as Matroska allows), the extension uses a priority system based on the stream's `filename` metadata tag:
+
+| Priority | Filename prefix |
+|---|---|
+| Highest | `cover.*` |
+| High | `cover_land.*` |
+| Medium | `cover_small.*` |
+| Lowest | Any other name |
+
+The selected image is returned as a `.commonIdentifierArtwork` `AVMetadataItem` with the appropriate data type (`kCMMetadataBaseDataType_PNG` or `kCMMetadataBaseDataType_JPEG`).
+
+## Creating track readers
+
+`loadTrackReaders()` iterates all streams and creates an `METrackReader` for each supported stream type:
+
+- **Video streams** → `VideoTrackReader` (skipping attached-picture and timed-thumbnail streams, which are metadata rather than content)
+- **Audio streams** → `AudioTrackReader`
+
+Streams of unsupported types (subtitles, data, attachments) are marked `AVDISCARD_ALL` so FFmpeg does not waste time demuxing them.
+
+AVFoundation uses the track readers to identify the best stream for each media type. The extension pre-selects the best video, audio, and subtitle streams using `av_find_best_stream()` and marks those as enabled by default.
+
+## The PacketDemuxer
+
+Once AVFoundation starts reading samples, the `PacketDemuxer` takes over. It runs on a dedicated background dispatch queue (`uk.org.marginal.qlvideo.formatreader`) and feeds compressed packets to the `AudioTrackReader` and `VideoTrackReader` instances.
+
+The demuxer maintains a ring buffer for each active stream:
+
+- **Video**: capacity of 1,024 packets, read-ahead target of 120 packets (2 seconds at 60 fps)
+- **Audio**: capacity of 3,072 packets, read-ahead target of 196 packets
+
+AVFoundation frequently seeks and steps non-linearly across sample cursors. The demuxer handles this by buffering packets in logical-index ring buffers, performing FFmpeg seeks (`avformat_seek_file`) only when a requested packet falls outside the buffer window.
+
+<Tip>
+  For DivX streams (codec tags `DIVX`, `XVID`, `DX50`), the demuxer automatically applies FFmpeg's `mpeg4_unpack_bframes` bitstream filter to regularise the packet structure before feeding packets to the decoder.
+</Tip>
+
+## Debugging the FormatReader
+
+To debug in Xcode, edit the **Run** scheme for the `formatreader` target:
+
+- **Executable**: `simpleplayer.app`
+- **Debug executable**: enabled
+
+Then open a test file in the simpleplayer application. You can also stream the extension's log output:
+
+```bash
+sudo log stream --style compact --debug \
+  --predicate 'subsystem == "uk.org.marginal.qlvideo" AND category == "formatreader"'
+```

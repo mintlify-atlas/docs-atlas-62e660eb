@@ -1,0 +1,85 @@
+---
+title: "Regenerate and Manage the QuickLook Thumbnail Cache"
+description: "Regenerate the QuickLook thumbnail cache and trigger Spotlight reindexing to fix stale or missing QuickLook Video thumbnails using the app or Terminal commands."
+---
+
+macOS maintains a persistent cache of QuickLook thumbnails so that Finder does not need to re-read every video file each time you open a folder. This cache can become stale after updating QuickLook Video, changing the snapshot time setting, or when the QuickLook daemon gets into a bad state. QuickLook Video handles the most common cache maintenance tasks automatically, and also gives you a button to force regeneration manually.
+
+<Note>
+QuickLook Video automatically clears the thumbnail cache and triggers a Spotlight reindex the first time you open the app after an update. In most cases you do not need to take any manual action after upgrading.
+</Note>
+
+## How the cache works
+
+When Finder requests a thumbnail for a video file, the QuickLook daemon checks its cache first. If a cached thumbnail exists it is returned immediately; if not, QuickLook Video's plugin generates a new one by seeking to the configured snapshot time and capturing a frame. The cache is stored on disk and persists across reboots.
+
+Clearing the cache with `qlmanage -r cache` removes all stored thumbnails. Finder then regenerates them on demand as you browse folders.
+
+## Automatic cache management
+
+QuickLook Video performs two maintenance tasks automatically on first launch after each version update:
+
+- **Cache reset** — calls `qlmanage -r cache` to clear all cached thumbnails, then shows a note in the preferences window indicating that Finder will regenerate thumbnails as you browse.
+- **Spotlight reindex** — polls every 10 seconds until the `QLVideo Metadata.mdimporter` Spotlight extension is registered by macOS, then calls `mdimport -r` to trigger reindexing of your media library. A note appears in the preferences window while reindexing is in progress.
+
+Both operations are gated on the app version stored in `UserDefaults` under the keys `LastQuickLook` and `LastSpotlight`, so they run exactly once per version.
+
+## Common scenarios and solutions
+
+<AccordionGroup>
+  <Accordion title="Thumbnails are not showing for video files">
+    The QuickLook cache may be in an inconsistent state, or Finder may not have picked up the QuickLook Video plugin yet. Open **QuickLook Video.app** and click **Regenerate Thumbnails**. Finder restarts automatically and begins generating new thumbnails as you browse your video folders.
+  </Accordion>
+  <Accordion title="Old thumbnails are still showing after an update">
+    QuickLook Video clears the cache automatically on first launch after an update. If you see old thumbnails, open the app and click **Regenerate Thumbnails** to force another cache reset.
+  </Accordion>
+  <Accordion title="Spotlight is not finding video files by metadata">
+    The Spotlight importer may not have finished registering. Wait a few minutes, then open a Spotlight search again. If the problem persists, open **QuickLook Video.app** — the app detects that the importer is registered and triggers a reindex automatically. The preferences window shows a note while reindexing is in progress.
+  </Accordion>
+  <Accordion title="Thumbnails are stale after changing the snapshot time">
+    After you adjust the Snapshot Time slider, cached thumbnails are not updated automatically. Click **Regenerate Thumbnails** in the app to clear the cache and let Finder rebuild thumbnails using the new offset.
+  </Accordion>
+</AccordionGroup>
+
+## Manual cache reset via Terminal
+
+If the app's **Regenerate Thumbnails** button is not available, you can perform the same steps from Terminal.
+
+<Steps>
+  <Step title="Clear the QuickLook cache">
+    Run the following command to instruct the QuickLook daemon to purge its thumbnail cache:
+
+    ```bash
+    qlmanage -r cache
+    ```
+  </Step>
+  <Step title="Restart Finder">
+    Run the following command to restart Finder so it picks up the cleared cache and begins requesting new thumbnails:
+
+    ```bash
+    killall Finder
+    ```
+
+    Finder relaunches automatically within a few seconds.
+  </Step>
+  <Step title="Browse your video folders">
+    Navigate to a folder containing video files. Finder requests fresh thumbnails from QuickLook Video as each file comes into view.
+  </Step>
+</Steps>
+
+## Manual Spotlight reindex via Terminal
+
+If Spotlight is not indexing your video files correctly, you can trigger a manual reindex of the QuickLook Video Spotlight importer:
+
+```bash
+mdimport -r "/Applications/QuickLook Video.app/Contents/Library/Spotlight/QLVideo Metadata.mdimporter"
+```
+
+<Warning>
+This command reimports metadata for all files associated with the QuickLook Video Spotlight importer. Depending on the size of your media library, indexing may take several minutes. You can monitor progress in **System Settings → Siri & Spotlight → Spotlight Privacy**.
+</Warning>
+
+## Related pages
+
+- [QuickLook Video Settings and Preferences](/configuration/settings) — overview of the preferences panel
+- [Configure Thumbnail Snapshot Time](/configuration/thumbnail-time) — adjust which frame is used for thumbnails

@@ -1,0 +1,101 @@
+---
+title: "Debug the QuickLook Video macOS Extensions in Xcode"
+description: "Learn how to debug the QuickLook Video mdimporter, FormatReader, and VideoDecoder extensions in Xcode using the mdimport tool and simpleplayer debug app."
+---
+
+QuickLook Video ships three extensions — `mdimporter`, `formatreader`, and `videodecoder` — that run in separate worker processes managed by macOS. Because they are not standalone executables, debugging them requires configuring Xcode to launch a host process and attach the debugger to the extension. This page explains how to set that up for each extension, and how to read the system log to diagnose issues without a full debug session.
+
+## Viewing logs
+
+All three extensions write to the system log under the subsystem `uk.org.marginal.qlvideo`, each with its own category. You can stream or filter these logs in two ways:
+
+**Console.app:**
+
+1. Open **Console.app** (`/Applications/Utilities/Console.app`).
+2. Enter the following in the search bar:
+
+   ```
+   subsystem:uk.org.marginal.qlvideo
+   ```
+
+3. Reproduce the issue to capture relevant entries.
+
+**Terminal (live stream):**
+
+```bash
+sudo log stream --style compact --debug --predicate 's=uk.org.marginal.qlvideo'
+```
+
+Run this before interacting with a video file in Finder to capture log output in real time. The `--debug` flag includes messages at all severity levels.
+
+## Debugging the mdimporter
+
+The `mdimporter` extension provides Spotlight metadata. To attach a debugger, you configure Xcode to run `/usr/bin/mdimport` as the host process.
+
+<Steps>
+  <Step title="Build the QuickLook Video target">
+    Select the **QuickLook Video** scheme and press **⌘B**. You must build this target at least once before debugging any extension so that the app bundle and plugins are in place.
+  </Step>
+  <Step title="Switch to the mdimporter scheme">
+    In the Xcode scheme selector, choose the **mdimporter** target.
+  </Step>
+  <Step title="Edit the Run scheme">
+    Open **Product → Scheme → Edit Scheme**. In the **Run** section:
+
+    - Set **Executable** to `/usr/bin/mdimport`.
+    - Ensure **Debug executable** is checked.
+    - Under **Arguments Passed On Launch**, add: `-t -d2 /path/to/your/testfile.mkv`
+  </Step>
+  <Step title="Run the scheme">
+    Press **⌘R**. Xcode launches `mdimport` with your test file and attaches the debugger to the `mdimporter` extension process. You can set breakpoints in the `mdimporter` source normally.
+  </Step>
+</Steps>
+
+The `-t -d2` arguments tell `mdimport` to test the file (`-t`) and print debug output at level 2 (`-d2`), which shows the metadata fields that were extracted.
+
+## Debugging formatreader and videodecoder
+
+The `formatreader` and `videodecoder` extensions are AVFoundation Media Extensions. They run inside any app that uses AVFoundation to play media. The repository includes `simpleplayer`, a minimal AVFoundation player designed specifically for this purpose.
+
+<Steps>
+  <Step title="Build the QuickLook Video target">
+    Select the **QuickLook Video** scheme and press **⌘B**. This builds `simpleplayer.app` along with the extensions.
+  </Step>
+  <Step title="Switch to the formatreader scheme">
+    In the scheme selector, choose the **formatreader** target. (Use the same approach for **videodecoder** if you want to debug that extension instead.)
+  </Step>
+  <Step title="Edit the Run scheme">
+    Open **Product → Scheme → Edit Scheme**. In the **Run** section:
+
+    - Set **Executable** to `simpleplayer.app`. Use the **Other…** option to locate it inside the build products directory.
+    - Ensure **Debug executable** is checked.
+  </Step>
+  <Step title="Run the scheme and select a test file">
+    Press **⌘R**. Xcode launches `simpleplayer` and attaches the debugger. In `simpleplayer`, open a video file to exercise the extension. When `formatreader` or `videodecoder` processes the file, your breakpoints will fire.
+  </Step>
+</Steps>
+
+<Note>
+  Both `formatreader` and `videodecoder` are exercised whenever `simpleplayer` opens a non-native file. If you only want to debug one, check the log output to determine which extension is handling your test file.
+</Note>
+
+## Using ffprobe for bug reports
+
+The build produces a standalone `ffprobe` executable alongside the FFmpeg libraries. `ffprobe` gives you detailed stream information about a file — codec, container format, duration, bit rate, and more — which is useful for diagnosing why a particular file fails.
+
+```bash
+ffprobe /path/to/problematic/file.mkv
+```
+
+The **Report Issue** dialog in the QuickLook Video app runs `ffprobe` automatically and includes its output in the GitHub issue body. If you are debugging manually, you can run `ffprobe` directly from the build products directory.
+
+## Crash behavior: Debug vs. Release
+
+Understanding how each build configuration handles FFmpeg crashes is important when debugging:
+
+| Build | Crash behavior |
+|---|---|
+| **Debug** | Crashes propagate normally. The worker process crashes, and you see a standard crash report. Breakpoints and exception handlers in Xcode work as expected. |
+| **Release** | Exception handlers catch FFmpeg crashes and silently kill the worker process. No crash dialog appears. This protects end users from disruption when processing corrupt files. |
+
+When investigating a crash, always use a **Debug** build so the crash propagates and you can inspect the stack trace.

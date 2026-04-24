@@ -1,0 +1,70 @@
+---
+title: "QuickLook Video: Extend macOS for Any Video Format"
+description: "QuickLook Video adds Finder thumbnails, QuickLook previews, and Spotlight indexing for MKV, WebM, AVI, WMV, FLV, and other non-native formats on macOS."
+---
+
+macOS natively understands a narrow slice of the media landscape — primarily MPEG audio and video inside MPEG containers. If you work with MKV files, WebM video, AVI archives, Flash recordings, or Windows Media content, Finder shows blank icons, QuickLook shows nothing, and Spotlight can't search any of the metadata. QuickLook Video closes that gap. Install it once, and all three systems — Finder, QuickLook, and Spotlight — gain support for the formats that macOS leaves out.
+
+## What QuickLook Video adds
+
+QuickLook Video installs three system extensions that work silently in the background. You never interact with them directly; they hook into macOS and take effect automatically for any supported file you open or browse.
+
+<CardGroup cols={2}>
+  <Card title="Finder thumbnails" icon="image">
+    Finder displays static snapshot thumbnails and embedded cover art for non-native video and audio files. Thumbnails are generated from a configurable offset into the video — by default, 10 seconds in.
+  </Card>
+  <Card title="QuickLook previews" icon="eye">
+    Press **Space** on any supported file in Finder to open a full QuickLook preview. The preview uses AVFoundation under the hood, so playback controls work exactly as you'd expect.
+  </Card>
+  <Card title="Spotlight metadata" icon="magnifying-glass">
+    Spotlight indexes title, artist, codec, resolution, duration, and other metadata from your video and audio files. You can search your entire media library without opening a single file.
+  </Card>
+  <Card title="Broad codec coverage" icon="microchip">
+    Support spans VP6, VP8, VP9, AV1, H.266/VVC, Dolby Vision, Theora, Sorenson 1 & 3, Cinepak, Flash Video, Real Video, Intel Indeo, Vorbis, Windows Media Audio, WavPak, ATRAC, and more.
+  </Card>
+</CardGroup>
+
+## Supported file formats
+
+QuickLook Video adds support for the following container formats:
+
+| Format | Extensions |
+|--------|------------|
+| Matroska | `.mkv`, `.mka` |
+| WebM | `.webm` |
+| Windows Media | `.wmv`, `.wma` |
+| Ogg Video | `.ogv`, `.ogm` |
+| AVI | `.avi` (partial support) |
+| Flash Video | `.flv`, `.f4v` |
+| Real Media | `.rm`, `.rv`, `.ra` |
+| SMPTE | `.mxf`, `.gxf` |
+
+## How it works
+
+QuickLook Video installs three extensions into macOS:
+
+- **Spotlight mdimporter** — reads metadata from non-native files and writes it to the Spotlight index so you can search by title, codec, resolution, duration, and more.
+- **FormatReader Media Extension** — teaches AVFoundation how to demux non-native container formats and audio codecs, enabling QuickLook previews and Finder thumbnails.
+- **VideoDecoder Media Extension** — adds software decoding for non-native video codecs that AVFoundation does not support natively.
+
+All three extensions are bundled inside **QuickLook Video.app** and registered automatically when you first launch it. You do not need to manage them manually.
+
+<Note>
+Long-time Mac users may recognise this approach from [Perian](https://www.perian.org), which performed a similar function with the QuickTime framework before Apple replaced it with AVFoundation. QuickLook Video is the spiritual successor to Perian for the modern macOS extension model.
+</Note>
+
+## System requirements
+
+- **macOS 12 (Monterey) or later**
+- **Late-2013 Mac or newer** — the FFmpeg libraries that power codec support require AVX2 CPU instructions. Macs from late 2013 onward include AVX2. Earlier hardware is not supported.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Download the app, open the DMG, and get QuickLook Video running on your Mac.
+  </Card>
+  <Card title="Getting started" icon="rocket" href="/getting-started">
+    Verify the app is working, browse thumbnails in Finder, and search with Spotlight.
+  </Card>
+</CardGroup>

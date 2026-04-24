@@ -1,0 +1,131 @@
+---
+title: "Spotlight Extension: Index Video Metadata on macOS"
+description: "The QuickLook Video mdimporter uses FFmpeg to index title, duration, resolution, codecs, and audio stream info from non-native video files into macOS Spotlight."
+---
+
+The Spotlight extension — packaged as an mdimporter bundle — enables macOS Spotlight to search your video files by their technical properties and embedded metadata. When Spotlight indexes a supported media file, it calls into this extension to extract structured attributes: duration, resolution, frame rate, codec names, audio channel count, embedded tags such as title and artist, and subtitle language tracks. All of that information then becomes searchable in Spotlight and visible in Finder's Get Info window.
+
+## Entry point
+
+macOS Spotlight calls the C-exported function `GetMetadataForFile()` with the path of the file to index. The function is implemented in `GetMetadataForFile.swift` and logs using the subsystem `uk.org.marginal.qlvideo` and category `mdimporter`.
+
+```swift
+@_cdecl("GetMetadataForFile")
+public func GetMetadataForFile(
+    _ thisInterface: UnsafeMutableRawPointer?,
+    _ attributes: CFMutableDictionary?,
+    _ contentTypeUTI: CFString?,
+    _ pathToFile: CFString?
+) -> DarwinBoolean
+```
+
+## How it reads media files
+
+The importer opens the file directly by its filesystem path using FFmpeg's libavformat:
+
+1. `avformat_open_input()` — opens the container and reads enough of the file to identify its format.
+2. `avformat_find_stream_info()` — reads ahead in the file to populate codec parameters for all streams.
+
+If either call fails (for example, because the file is corrupt or an unsupported format), the function returns `false` and Spotlight skips the file.
+
+## What it indexes
+
+### Container-level attributes
+
+| Spotlight key | Description |
+|---|---|
+| `kMDItemDurationSeconds` | Total duration, converted from FFmpeg's `AV_TIME_BASE` units |
+| `kMDItemTotalBitRate` | Overall container bit rate |
+
+### Video stream attributes
+
+These are read from the best video stream selected by `av_find_best_stream()`.
+
+| Spotlight key | Description |
+|---|---|
+| `kMDItemPixelHeight` | Frame height in pixels |
+| `kMDItemPixelWidth` | Display width in pixels, corrected for sample aspect ratio |
+| `kMDItemVideoBitRate` | Video stream bit rate |
+| `uk_org_marginal_qlvideo_framerate` | Frame rate rounded to two decimal places |
+
+<Note>
+  Pixel width is corrected for non-square pixels. If the stream has a sample aspect ratio (`sar`), the importer scales the coded width by `sar.num / sar.den` to produce the correct display width.
+</Note>
+
+### Audio stream attributes
+
+These are read from the best audio stream.
+
+| Spotlight key | Description |
+|---|---|
+| `kMDItemAudioBitRate` | Audio stream bit rate |
+| `kMDItemAudioSampleRate` | Sample rate |
+| `kMDItemAudioChannelCount` | Channel count — 6-channel audio is indexed as `5.1`, 7-channel as `6.1`, and 8-channel as `7.1` |
+
+### Media type tags
+
+The importer adds entries to `kMDItemMediaTypes` for each kind of stream present:
+
+- `"Video"` — for non-thumbnail video streams
+- `"Sound"` — for audio streams
+- `"Text"` — for subtitle streams (excluding forced streams and streams titled "forced")
+
+### Subtitle languages
+
+Non-forced subtitle tracks are indexed under the custom key `uk_org_marginal_qlvideo_subtitles` as an array of RFC 3066 language codes (e.g., `eng`, `jpn`). Language codes `und` and `unk` are skipped.
+
+### Codec names
+
+For every stream, the importer looks up a human-readable name using `avcodec_find_decoder()` and appends it to `kMDItemCodecs`. A codec profile is appended in brackets when available, for example `"H.264 [High]"`.
+
+<Tip>
+  The importer uses Apple-style names rather than raw FFmpeg names for common codecs. For example, `AV_CODEC_ID_MPEG4` appears as `"MPEG-4"`, and `AV_CODEC_ID_HEVC` appears as `"H.265"`.
+</Tip>
+
+### Container metadata tags
+
+The importer iterates all FFmpeg metadata tags on the container and maps them to standard `kMDItem*` Spotlight keys:
+
+<AccordionGroup>
+  <Accordion title="Tag-to-Spotlight-key mapping">
+
+    | Tag(s) | Spotlight key |
+    |---|---|
+    | `album`, `sort_album`, `wm/albumtitle` | `kMDItemAlbum` |
+    | `artist`, `author`, `sort_artist` | `kMDItemPerformers` |
+    | `comment` | `kMDItemComment` |
+    | `composer` | `kMDItemComposer` |
+    | `copyright` | `kMDItemCopyright` |
+    | `creation_time` | `kMDItemContentCreationDate` |
+    | `date`, `wm/mediaoriginalbroadcastdatetime` | `kMDItemRecordingYear` (if a plain year) or `kMDItemRecordingDate` |
+    | `description` | `kMDItemDescription` |
+    | `encoder`, `encoding_tool` | `kMDItemEncodingApplications` |
+    | `genre` | `kMDItemGenre` |
+    | `keywords` | `kMDItemKeywords` |
+    | `language` | `kMDItemLanguages` |
+    | `lyricist` | `kMDItemLyricist` |
+    | `performers` | `kMDItemPerformers` |
+    | `publisher`, `service_name`, `service_provider`, `wm/publisher` | `kMDItemPublishers` |
+    | `synopsis` | `kMDItemHeadline` |
+    | `title`, `sort_name` | `kMDItemTitle` |
+    | `track` | `kMDItemAudioTrackNumber` |
+
+  </Accordion>
+</AccordionGroup>
+
+Date values are parsed using a series of ISO 8601 formatters (with and without fractional seconds, with and without a space between date and time). If none matches, `NSDataDetector` is tried as a last resort.
+
+## Debugging the mdimporter
+
+To run the importer under the Xcode debugger, edit the **Run** scheme for the `mdimporter` target:
+
+- **Executable**: `/usr/bin/mdimport`
+- **Debug executable**: enabled
+- **Arguments**: `-t -d2 <path-to-test-file>`
+
+You can also watch its log output live:
+
+```bash
+sudo log stream --style compact --debug \
+  --predicate 'subsystem == "uk.org.marginal.qlvideo" AND category == "mdimporter"'
+```

@@ -1,0 +1,31 @@
+---
+title: "Supported Container Formats: MKV, WebM, AVI, and More"
+description: "QuickLook Video supports Matroska, WebM, AVI, Flash Video, Windows Media, Ogg, Real Media, and SMPTE container formats that macOS does not handle natively."
+---
+
+A container format (also called a wrapper format) packages one or more audio, video, subtitle, and metadata streams into a single file. The container defines the file extension and overall structure, but it does not determine which codec was used to compress the audio or video inside. macOS and AVFoundation natively support a limited set of containers—primarily MPEG-based formats such as MP4, MOV, M4V, and M4A—because those align with Apple's media stack. Files using other containers cannot be previewed, thumbnailed, or indexed by Spotlight without additional software. QuickLook Video installs a Media Extension that teaches AVFoundation to demux these non-native containers, enabling Finder thumbnails, QuickLook previews, and Spotlight metadata for all of the formats listed below.
+
+<Note>
+  Container formats that macOS already handles natively—MP4, MOV, M4V, M4A, and similar MPEG-based files—do not require QuickLook Video. The extension only activates for files that AVFoundation cannot open on its own.
+</Note>
+
+## Supported containers
+
+| Format | Extensions | Notes |
+|--------|------------|-------|
+| Matroska | `.mkv`, `.mka` | Full support for video, audio, subtitles, and embedded cover art |
+| WebM | `.webm` | Google's open container based on Matroska |
+| Windows Media | `.wmv`, `.wma` | Microsoft's audio/video container format |
+| Ogg Video | `.ogv`, `.ogm` | Xiph.Org's open container, commonly used with Theora and Vorbis |
+| AVI | `.avi` | Partial support—playback works for most AVI files, but some features may be limited |
+| Flash Video | `.flv`, `.f4v` | Adobe Flash container, widely used in older web video |
+| Real Media | `.rm`, `.rv`, `.ra` | RealNetworks' legacy streaming media format |
+| SMPTE | `.mxf`, `.gxf` | Professional broadcast container formats used in production workflows |
+
+<Warning>
+  AVI support is partial. Most AVI files will preview and play correctly, but edge cases—such as files with non-standard index structures or unusual codec configurations—may not work as expected.
+</Warning>
+
+## How QuickLook Video opens these files
+
+QuickLook Video registers a FormatReader Media Extension with AVFoundation. When macOS encounters a file with one of the extensions above, it routes the file to this extension rather than rejecting it. The FormatReader uses FFmpeg's `libavformat` to demux the container and expose individual audio, video, and metadata streams to AVFoundation, which then handles playback, QuickLook preview generation, and Spotlight indexing in the normal way.

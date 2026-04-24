@@ -1,0 +1,124 @@
+---
+title: "Troubleshoot Missing Thumbnails and QuickLook Issues"
+description: "Fix missing thumbnails, blank QuickLook previews, Spotlight not finding video metadata, and other common QuickLook Video issues on macOS Monterey and later."
+---
+
+QuickLook Video extends macOS Finder with thumbnails, QuickLook previews, and Spotlight metadata for video formats that macOS does not support natively. Most issues stem from a stale cache, an unsupported macOS version, or a corrupt file. Work through the sections below that match your symptom.
+
+<AccordionGroup>
+  <Accordion title="No thumbnails appear in Finder">
+    Thumbnails are generated asynchronously by macOS, so they may not appear instantly — especially for large files or after a fresh install.
+
+    **Try these steps in order:**
+
+    <Steps>
+      <Step title="Wait a moment">
+        Give macOS up to a minute to generate thumbnails in the background. The delay is normal, particularly for large video files or after a first launch.
+      </Step>
+      <Step title="Regenerate the thumbnail cache">
+        Open the **QuickLook Video** app and click **Regenerate Thumbnails**. This resets the QuickLook cache and restarts Finder.
+      </Step>
+      <Step title="Confirm the app is in your Applications folder">
+        QuickLook Video must be installed in `/Applications`. If you are running it directly from a `.dmg` disk image, the plugins will not register correctly. Drag the app to your Applications folder and launch it from there.
+      </Step>
+      <Step title="Check your macOS version">
+        QuickLook Video requires macOS 12 (Monterey) or later. Open **Apple menu → About This Mac** to verify.
+      </Step>
+      <Step title="Check your Mac model">
+        QuickLook Video requires a late-2013 Mac or newer with AVX2 instruction support. If your Mac does not qualify, the app displays an alert when it launches: *"QuickLook Video requires a late-2013 Mac or newer, with AVX2 support."* There is no workaround for unsupported hardware.
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="Thumbnails stopped working after an update">
+    QuickLook Video automatically resets the QuickLook cache the first time it runs after an update, so thumbnails should regenerate on their own.
+
+    If thumbnails are still missing after updating:
+
+    1. Open the **QuickLook Video** app.
+    2. Click **Regenerate Thumbnails**.
+    3. Wait a minute for Finder to regenerate thumbnails in the background.
+
+    <Note>
+      The app tracks which version last performed the reset. If you skipped launching the app after updating, the automatic reset will not have run yet. Opening the app once is sufficient to trigger it.
+    </Note>
+  </Accordion>
+
+  <Accordion title="QuickLook preview shows blank or an error">
+    A blank or failed QuickLook preview usually points to one of the following causes:
+
+    - **The file is corrupt or incomplete.** A partially downloaded video is the most common culprit. Try re-downloading the file and previewing it again.
+    - **The file uses an unsupported codec or container variant.** AVI files, in particular, have only partial support due to the format's inconsistent structure. Some AVI files work fine; others may not.
+    - **The file genuinely does not play.** Open the file in a dedicated video player (such as VLC or IINA) to confirm whether the content itself is playable. If it does not play in any app, the file is likely corrupt.
+
+    <Tip>
+      If a file previews correctly in VLC but not in QuickLook, file a bug report using the **Report Issue** menu item in the QuickLook Video app. See the "Crash reports and bug reports" section below for details on what to include.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Spotlight cannot find video metadata">
+    Spotlight metadata indexing runs in the background and can take a few minutes, especially after a fresh install or update.
+
+    <Steps>
+      <Step title="Wait for initial indexing">
+        Allow a few minutes for Spotlight to index your files after installing or updating QuickLook Video.
+      </Step>
+      <Step title="Open the QuickLook Video app">
+        The app polls for the Spotlight importer registration and triggers reindexing automatically once the importer is detected. Opening the app once is usually sufficient.
+      </Step>
+      <Step title="Check that the folder is indexed by Spotlight">
+        Open **System Settings → Siri & Spotlight → Spotlight Privacy** (or **System Preferences → Spotlight → Privacy** on older macOS) and confirm the folder containing your files is not in the excluded list.
+      </Step>
+      <Step title="Test manually in Terminal">
+        Run the following command to test whether the importer processes your file correctly:
+
+        ```bash
+        mdimport -t -d2 "/path/to/file.mkv"
+        ```
+
+        The output shows which metadata fields were extracted. If nothing appears, check the system log for errors (see the "Checking the log for errors" section below).
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="Crash reports and bug reports">
+    FFmpeg (the underlying media library) can crash when processing corrupt or incompletely downloaded files. In Release builds of QuickLook Video, these crashes are caught by exception handlers that silently kill the worker process — you will not see a crash dialog, but thumbnails or previews for that file will fail.
+
+    **To file a bug report:**
+
+    1. Open the **QuickLook Video** app.
+    2. Choose **File → Report Issue** from the menu bar. (This menu item is only available in the non-sandboxed version.)
+    3. Drag the problematic video file into the report window. The app automatically gathers thumbnail status, playability, Spotlight metadata, and `ffprobe` stream information.
+    4. Click **Send** to open a pre-filled GitHub issue.
+
+    <Warning>
+      The **Report Issue** menu item is hidden in the sandboxed (Mac App Store) version of QuickLook Video. If you do not see it, include the Console log output and `ffprobe` output manually in a GitHub issue.
+    </Warning>
+
+    After you click **Send**, the app checks `~/Library/Logs/DiagnosticReports` for recent crash reports involving QuickLook Video plugins. If any are found, they are zipped and saved to your Desktop so you can attach them to the issue.
+  </Accordion>
+
+  <Accordion title="Checking the log for errors">
+    All three QuickLook Video extensions (mdimporter, formatreader, and videodecoder) write to the system log under the subsystem `uk.org.marginal.qlvideo`. You can view these logs in two ways:
+
+    **Console.app:**
+
+    1. Open **Console.app** (in `/Applications/Utilities/`).
+    2. In the search bar, enter the following filter:
+
+       ```
+       subsystem:uk.org.marginal.qlvideo
+       ```
+
+    3. Reproduce the issue to capture relevant log entries.
+
+    **Terminal (live stream):**
+
+    ```bash
+    sudo log stream --style compact --debug \
+      --predicate 'subsystem == "uk.org.marginal.qlvideo"'
+    ```
+
+    This streams log output in real time as you interact with files in Finder. Include the relevant portion of this output when filing a bug report.
+  </Accordion>
+</AccordionGroup>

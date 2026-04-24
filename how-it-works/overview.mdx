@@ -1,0 +1,65 @@
+---
+title: "QuickLook Video Architecture and Extension Overview"
+description: "QuickLook Video uses three FFmpeg-powered extensions — a Spotlight mdimporter, FormatReader, and VideoDecoder — to add non-native video support to macOS Finder."
+---
+
+QuickLook Video extends macOS Finder with thumbnail previews, QuickLook previews, and Spotlight metadata for media formats that macOS does not support natively. It does this through three system extensions bundled inside **QuickLook Video.app**, each targeting a different layer of the macOS media stack. All three extensions rely on [FFmpeg](https://ffmpeg.org/) as their underlying decoding and demuxing library.
+
+## The three extensions
+
+<CardGroup cols={3}>
+  <Card title="Spotlight extension" icon="magnifying-glass" href="/how-it-works/spotlight-extension">
+    An mdimporter that indexes video metadata — duration, resolution, codecs, audio info, and embedded tags — into Spotlight so you can search for media files by their properties.
+  </Card>
+  <Card title="FormatReader extension" icon="file-video" href="/how-it-works/format-reader">
+    An `MEFormatReader` Media Extension that teaches AVFoundation how to open and demux non-native container formats such as Matroska, WebM, and Windows Media, exposing audio and video tracks for playback and QuickLook preview.
+  </Card>
+  <Card title="VideoDecoder extension" icon="microchip" href="/how-it-works/video-decoder">
+    An `MEVideoDecoder` Media Extension that decodes legacy and non-native video codecs — such as Sorenson, Cinepak, HAP, and Intel Indeo — using FFmpeg, with optional GPU-accelerated HDR tone mapping via Metal.
+  </Card>
+</CardGroup>
+
+## How the app ties everything together
+
+**QuickLook Video.app** itself is a lightweight host application. It does not play media directly. Its role is to:
+
+- **Register Uniform Type Identifiers (UTIs)** for every media format the extensions support, so macOS routes files of those types to the right extension.
+- **Reset the QuickLook thumbnail cache** on first launch after an update, so Finder regenerates thumbnails with the new version.
+- **Trigger Spotlight reindexing** on first launch after an update, polling until macOS has loaded the new mdimporter and then calling `mdimport -r` to reindex.
+
+<Steps>
+  <Step title="You open a supported media file in Finder">
+    macOS checks the file's UTI against the UTIs registered by QuickLook Video.app. Because the app registered the type, macOS knows to route the request to the QuickLook Video extensions.
+  </Step>
+  <Step title="AVFoundation opens the file via FormatReader">
+    The FormatReader extension receives the file through an `MEByteSource`. It wraps the byte source in an FFmpeg `AVIOContext`, calls `avformat_open_input()` and `avformat_find_stream_info()`, then exposes the resulting audio and video tracks to AVFoundation as `METrackReader` instances.
+  </Step>
+  <Step title="AVFoundation decodes video via VideoDecoder">
+    When a video track uses a codec AVFoundation does not natively support, the VideoDecoder extension takes over. It receives compressed `CMSampleBuffer` frames, sends them to FFmpeg's decoder via `avcodec_send_packet()` / `avcodec_receive_frame()`, converts the decoded frame to BGRA using vImage, Metal, or FFmpeg's zscale filter, and returns a `CVPixelBuffer` to AVFoundation.
+  </Step>
+  <Step title="Spotlight indexes the file via the mdimporter">
+    The mdimporter receives the file path from Spotlight, opens the file independently with FFmpeg, reads stream and container metadata, and writes the results into Spotlight's attribute dictionary using standard `kMDItem*` keys.
+  </Step>
+</Steps>
+
+## FFmpeg as the common foundation
+
+All three extensions share the same FFmpeg build, which includes:
+
+- **dav1d** for AV1 decoding
+- **zimg** for pixel format and colour space conversion via the zscale filter
+
+<Note>
+  Because FFmpeg's demuxers and decoders occasionally crash on corrupt or incomplete files, release builds install exception handlers that silently kill the worker process rather than showing a crash report to the user.
+</Note>
+
+## Debugging
+
+All three extensions write to the system log under the subsystem `uk.org.marginal.qlvideo`. You can filter for their output in Console.app or stream it live with:
+
+```bash
+sudo log stream --style compact --debug \
+  --predicate 'subsystem == "uk.org.marginal.qlvideo"'
+```
+
+Each extension uses its own category — `mdimporter`, `formatreader`, or `videodecoder` — so you can narrow the output further.

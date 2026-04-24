@@ -1,0 +1,75 @@
+---
+title: "Frequently Asked Questions: QuickLook Video on macOS"
+description: "Answers about macOS version support, AVX2 hardware, Perian history, AVI limitations, privacy, crash handling, and how to file a QuickLook Video bug report."
+---
+
+QuickLook Video adds thumbnail, preview, and Spotlight metadata support to macOS for video formats that macOS does not handle natively. The questions below cover compatibility, how the app works, privacy, and what to do when something goes wrong.
+
+<AccordionGroup>
+  <Accordion title="What macOS versions are supported?">
+    QuickLook Video requires **macOS 12 (Monterey) or later**. It will not run on earlier versions of macOS.
+  </Accordion>
+
+  <Accordion title="What Mac hardware is required?">
+    You need a **Mac from late 2013 or newer**. Older Macs lack AVX2 instruction support, which the FFmpeg library requires. If you launch QuickLook Video on an unsupported Mac, the app displays a critical alert:
+
+    > *"QuickLook Video requires a late-2013 Mac or newer, with AVX2 support. The QuickLook and Spotlight plugins will crash!"*
+
+    There is no workaround for this hardware limitation. Apple Silicon Macs are all supported.
+  </Accordion>
+
+  <Accordion title="Is QuickLook Video related to Perian?">
+    QuickLook Video is the spiritual successor to [Perian](https://www.perian.org). Perian added broad codec support to the old QuickTime framework. When Apple replaced QuickTime with AVFoundation, Perian stopped working. QuickLook Video does the same job for the modern stack: it uses Apple's AVFoundation Media Extension APIs to add support for non-native file formats and video codecs to AVFoundation, QuickLook, and Spotlight.
+  </Accordion>
+
+  <Accordion title="Why is AVI support partial?">
+    AVI is an old, poorly standardized format with many variations. Some AVI files — particularly those encoded with common codecs and a well-formed index — work fine. Others, especially those with unusual codecs, missing or corrupt indexes, or non-standard structures, may not produce thumbnails or previews. This is an inherent limitation of the AVI format, not a bug in QuickLook Video.
+
+    If a specific AVI file does not work, try opening it in VLC to confirm it is playable. If it plays in VLC but not in QuickLook, file a bug report using the **Report Issue** menu item in the app.
+  </Accordion>
+
+  <Accordion title="Does QuickLook Video affect playback in other apps?">
+    Yes. `formatreader` and `videodecoder` are **AVFoundation Media Extensions**, which means they are available system-wide to any app that uses AVFoundation for media playback. This includes QuickTime Player, Photos, and other apps that rely on AVFoundation.
+
+    Apps that use their own internal media decoders — such as VLC or IINA — are not affected, because they do not go through AVFoundation.
+  </Accordion>
+
+  <Accordion title="Why do thumbnails not appear immediately?">
+    macOS generates thumbnails **asynchronously** in the background. After installing QuickLook Video or adding new video files, it may take a moment for thumbnails to appear in Finder — longer for large files or when many files need processing at once.
+
+    If thumbnails do not appear after a minute or two, open the QuickLook Video app and click **Regenerate Thumbnails** to reset the cache and prompt Finder to regenerate them.
+  </Accordion>
+
+  <Accordion title="Is my video data sent anywhere?">
+    No. All processing happens **locally on your Mac**. QuickLook Video does not send video data, file paths, metadata, or any other information to any server. The only network activity is when you use the **Report Issue** feature, which opens a GitHub issue in your browser with diagnostic information you can review before submitting.
+  </Accordion>
+
+  <Accordion title="What happens with corrupt or incomplete video files?">
+    FFmpeg, the media library used by QuickLook Video, can crash when it encounters corrupt or incompletely downloaded files. In **Release builds**, QuickLook Video installs exception handlers in its plugins that catch these crashes and silently kill the worker process. You will not see a crash dialog, but thumbnails or previews for that file will fail.
+
+    This behavior is intentional: it prevents crash reports from disturbing you when Finder tries to thumbnail a file that is still downloading or is otherwise damaged.
+
+    If you need to investigate why a specific file fails, use the **Report Issue** feature in the app. It collects `ffprobe` output and recent crash reports automatically.
+  </Accordion>
+
+  <Accordion title="How do I report a bug?">
+    Open the **QuickLook Video** app and choose **File → Report Issue** from the menu bar. This opens a sheet where you can drag in the problematic file. The app then:
+
+    1. Attempts to generate a thumbnail and checks playability via AVFoundation.
+    2. Runs `mdimport` to check Spotlight metadata extraction.
+    3. Runs `ffprobe` to collect stream information.
+    4. Checks `~/Library/Logs/DiagnosticReports` for recent crash reports involving QuickLook Video plugins, zips any it finds, and saves them to your Desktop.
+
+    Clicking **Send** opens a pre-filled GitHub issue in your browser for you to review and submit.
+
+    <Note>
+      The **Report Issue** menu item is only available in the non-sandboxed version of QuickLook Video. If you do not see it, you can file an issue manually on [GitHub](https://github.com/Marginal/QuickLookVideo/issues) and include the Console log filtered to `subsystem:uk.org.marginal.qlvideo`.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Can I build it from source?">
+    Yes. The source code is available on [GitHub](https://github.com/Marginal/QuickLookVideo) under the GNU General Public License v2. You need Xcode with the macOS 12 SDK and a few Homebrew tools (`meson`, `ninja`, `pkg-config`, `nasm`) to build the FFmpeg dependency.
+
+    See the [Building](/building) page for full instructions.
+  </Accordion>
+</AccordionGroup>

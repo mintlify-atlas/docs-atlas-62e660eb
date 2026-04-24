@@ -1,0 +1,62 @@
+---
+title: "Install QuickLook Video on macOS (Monterey and Later)"
+description: "Download and install QuickLook Video from GitHub. The app registers its Spotlight, QuickLook, and AVFoundation extensions automatically on first launch."
+---
+
+Installing QuickLook Video takes about two minutes. You download a disk image from GitHub, drag the app to your Applications folder, and launch it. The app registers all three system extensions — the Spotlight importer, the FormatReader Media Extension, and the VideoDecoder Media Extension — on first launch. No configuration is required to start seeing thumbnails and previews.
+
+## System requirements
+
+- **macOS 12 (Monterey) or later**
+- **Late-2013 Mac or newer** with AVX2 CPU support
+
+<Note>
+AVX2 is a CPU instruction set required by the FFmpeg libraries that power QuickLook Video's codec support. All Intel Macs from late 2013 onward include AVX2. If you run QuickLook Video on older hardware, the QuickLook and Spotlight plugins will crash. The app checks for AVX2 support at launch and warns you if your Mac does not meet the requirement.
+</Note>
+
+## Install QuickLook Video
+
+<Steps>
+  <Step title="Download the disk image">
+    Go to the [QuickLook Video releases page](https://github.com/Marginal/QuickLookVideo/releases) on GitHub. Download the latest `.dmg` file from the Assets section of the most recent release.
+  </Step>
+  <Step title="Open the disk image">
+    Double-click the downloaded `.dmg` file. A Finder window opens showing **QuickLook Video.app**.
+  </Step>
+  <Step title="Drag the app to Applications">
+    Drag **QuickLook Video.app** into your **Applications** folder. If macOS prompts you to replace an existing version, click **Replace**.
+  </Step>
+  <Step title="Launch the app">
+    Open **QuickLook Video** from your Applications folder. On first launch, the app registers the Spotlight mdimporter and the two AVFoundation Media Extensions with macOS. It also triggers Spotlight to begin reindexing supported file types. A notice in the app window confirms that reindexing has started.
+  </Step>
+  <Step title="Verify thumbnails appear in Finder">
+    Open a Finder window containing MKV, WebM, AVI, or other supported video files. Switch to icon view (**⌘1**). Thumbnails should appear within a few seconds for files that have already been indexed. Press **Space** on any file to confirm QuickLook previews are working.
+  </Step>
+</Steps>
+
+<Note>
+macOS may show a security prompt the first time you open an app downloaded from the internet. If Gatekeeper blocks the launch, open **System Settings → Privacy & Security**, scroll to the Security section, and click **Open Anyway**.
+</Note>
+
+## What happens on first launch
+
+When you launch QuickLook Video for the first time after installing a new version:
+
+1. The app clears the QuickLook thumbnail cache so stale thumbnails from a previous version do not persist.
+2. The app waits for macOS to register the bundled Spotlight importer (`QLVideo Metadata.mdimporter`), then triggers Spotlight to reindex all supported file types.
+3. The app displays a notice in its window while reindexing is in progress. Reindexing runs in the background; you can continue using your Mac normally.
+
+Spotlight reindexing speed depends on the size of your media library. A large collection may take several minutes to fully index.
+
+## Uninstall QuickLook Video
+
+<Steps>
+  <Step title="Quit the app">
+    If QuickLook Video is open, quit it from the menu bar or with **⌘Q**.
+  </Step>
+  <Step title="Move the app to Trash">
+    Open your **Applications** folder, select **QuickLook Video.app**, and move it to Trash (**⌘Delete**). Empty the Trash to complete removal.
+  </Step>
+</Steps>
+
+The QuickLook thumbnail cache and Spotlight index entries for non-native formats are cleared automatically by macOS over time. You do not need to manually remove any caches or database files when uninstalling.
